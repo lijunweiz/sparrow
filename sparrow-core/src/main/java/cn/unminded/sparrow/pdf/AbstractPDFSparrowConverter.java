@@ -5,10 +5,10 @@ import cn.unminded.sparrow.define.SparrowConverterException;
 import cn.unminded.sparrow.config.SparrowConstants;
 import cn.unminded.sparrow.info.PDDocumentInfo;
 import cn.unminded.sparrow.metric.ConvertMetric;
-import cn.unminded.sparrow.util.ConvertFormatEnum;
 import cn.unminded.sparrow.util.OutputModeEnum;
 import cn.unminded.sparrow.util.PDFBoxUtils;
 import cn.unminded.sparrow.util.PageSizeEnum;
+import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
@@ -17,8 +17,7 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
@@ -32,10 +31,20 @@ public abstract class AbstractPDFSparrowConverter implements PDFSparrowConverter
 
     @Override
     public void prepare(SparrowContext context) {
+        if (Objects.equals(context.getConvertFormatEnum(), PDF_TO_WORD)) {
+            try {
+                context.setPdList(new ArrayList<>(1));
+                context.getPdList().add(new PDDocumentInfo().setPdDocument(PDDocument.load(new File(context.getSourcePath()))));
+            } catch (IOException e) {
+                throw new SparrowConverterException(e);
+            }
+            return;
+        }
+
         if (Objects.equals(context.getOutputModeEnum(), OutputModeEnum.ONE_BY_ONE)) {
             String[] fileList = getFileList(context.getSourcePath());
             if (Objects.isNull(fileList) || fileList.length == 0) {
-                context.setPdList(Arrays.asList(new PDDocumentInfo()));
+                context.setPdList(null);
             } else {
                 context.setPdList(new ArrayList<>(fileList.length));
                 for (int i = 0; i < fileList.length; i++) {
@@ -84,18 +93,29 @@ public abstract class AbstractPDFSparrowConverter implements PDFSparrowConverter
 
     @Override
     public void save(SparrowContext context) {
+        if (Objects.equals(context.getConvertFormatEnum(), PDF_TO_WORD)) {
+            Writer writer = null;
+            try {
+                writer = new FileWriter(context.getSavePath());
+                writer.write(context.getPlanText());
+                writer.flush();
+            } catch (IOException e) {
+                logger.error("WORD文件保存失败, 错误原因: ", e);
+            } finally {
+                IOUtils.closeQuietly(writer);
+            }
+
+            return;
+        }
+
         for (PDDocumentInfo pdDocumentInfo : context.getPdList()) {
             try {
                 pdDocumentInfo.getPdDocument().save(pdDocumentInfo.getSaveFileName());
                 pdDocumentInfo.getPdDocument().close();
             } catch (Exception e) {
-                logger.error("文件保存失败, 错误原因: {}", e.getMessage());
+                logger.error("文件保存失败, 错误原因: ", e);
             }
         }
-    }
-
-    private boolean writeNewPdf(ConvertFormatEnum action) {
-        return IMAGE_TO_PDF.equals(action);
     }
 
     @Override

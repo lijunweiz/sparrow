@@ -1,13 +1,16 @@
 package cn.unminded.sparrow.gui.component;
 
+import cn.unminded.sparrow.config.SparrowThreadPool;
 import cn.unminded.sparrow.define.ConvertOutputFormat;
 import cn.unminded.sparrow.config.SparrowConstants;
-import cn.unminded.sparrow.metric.ConvertMetric;
+import cn.unminded.sparrow.define.SparrowConverterException;
 import cn.unminded.sparrow.delegate.PDFSparrowConverterDelegate;
-import cn.unminded.sparrow.util.LogUtil;
+import cn.unminded.sparrow.gui.util.LogUtil;
+import cn.unminded.sparrow.gui.util.MenuNameEnum;
+import cn.unminded.sparrow.metric.ConvertMetric;
+import cn.unminded.sparrow.util.ConvertFormatEnum;
 import cn.unminded.sparrow.util.OutputModeEnum;
 import cn.unminded.sparrow.util.PageSizeEnum;
-import cn.unminded.sparrow.gui.component.DragJPanel;
 import cn.unminded.sparrow.gui.util.UIUtils;
 import cn.unminded.sparrow.gui.util.JComponentUtils;
 import com.formdev.flatlaf.FlatClientProperties;
@@ -16,21 +19,27 @@ import com.formdev.flatlaf.extras.components.FlatButton;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Year;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 
 public class MainJFrame extends JFrame {
 
-    private JLabel sourceFolder = null;
-    private JLabel targetFolder = null;
+    /** 当前的转换模式 */
+    private String currentMode = MenuNameEnum.IMAGE_TO_PDF_MENU.getName();
+
+    private JButton sourceButton = null;
+    private JButton targetButton = null;
+    private JTextField  sourceFolder = null;
+    private JTextField  targetFolder = null;
+    private JComboBox<String> jComboBox = null;
+    private JButton start = null;
 
     private static final PDFSparrowConverterDelegate PDF_SPARROW_CONVERTER_DELEGATE;
 
@@ -51,7 +60,7 @@ public class MainJFrame extends JFrame {
             @Override
             public void windowClosing(WindowEvent windowEvent) {
                 if (JComponentUtils.exitAppConfirm()) {
-                    LogUtil.getLogger().info("程序退出成功");
+                    LogUtil.getLogger().info("Sparrow退出成功");
                     System.exit(0);
                 }
             }
@@ -62,31 +71,60 @@ public class MainJFrame extends JFrame {
 
     private void initComponents() {
         JMenuBar jMenuBar = new JMenuBar();
+        JMenu transModeMenu = new JMenu();
+        JMenuItem imageToPdfMenuItem = new JMenuItem();
+        JMenuItem pdfToWordMenuItem = new JMenuItem();
+
         JMenu helpMenu = new JMenu();
         JMenuItem aboutMenuItem = new JMenuItem();
         JMenuItem feedbackMenuItem = new JMenuItem();
         JMenuItem donateMenuItem = new JMenuItem();
-        sourceFolder = JComponentUtils.getJLabel("");
-        targetFolder = JComponentUtils.getJLabel("");
+
+        sourceButton = JComponentUtils.getJButton("选择文件或目录");
+        targetButton = JComponentUtils.getJButton("输出目录");
+        sourceFolder = new JTextField();
+        sourceFolder.setEditable(false);
+        targetFolder = new JTextField();
+        targetFolder.setEditable(false);
+        jComboBox = JComponentUtils.getJComboBox("独立输出", "合并输出");
+        start = JComponentUtils.getJButton(MenuNameEnum.START_MENU.getName());
+
+        // 转换模式
+        {
+            transModeMenu.setText(MenuNameEnum.TRANS_MODE_MENU.getName());
+            transModeMenu.setMnemonic(MenuNameEnum.TRANS_MODE_MENU.getMnemonic());
+            //---- imageToPdfMenuItem ----
+            imageToPdfMenuItem.setText(MenuNameEnum.IMAGE_TO_PDF_MENU.getName());
+            imageToPdfMenuItem.setMnemonic(MenuNameEnum.IMAGE_TO_PDF_MENU.getMnemonic());
+            imageToPdfMenuItem.addActionListener(this::imageToPdfAction);
+            transModeMenu.add(imageToPdfMenuItem);
+
+            //---- pdfToWordMenuItem ----
+            pdfToWordMenuItem.setText(MenuNameEnum.PDF_TO_WORD_MENU.getName());
+            pdfToWordMenuItem.setMnemonic(MenuNameEnum.PDF_TO_WORD_MENU.getMnemonic());
+            pdfToWordMenuItem.addActionListener(this::pdfToWordAction);
+            transModeMenu.add(pdfToWordMenuItem);
+        }
+        jMenuBar.add(transModeMenu);
 
         // 帮助按钮
         {
-            helpMenu.setText("帮助");
-            helpMenu.setMnemonic('H');
+            helpMenu.setText(MenuNameEnum.HELP_MENU.getName());
+            helpMenu.setMnemonic(MenuNameEnum.HELP_MENU.getMnemonic());
             //---- aboutMenuItem ----
-            aboutMenuItem.setText("关于");
-            aboutMenuItem.setMnemonic('A');
+            aboutMenuItem.setText(MenuNameEnum.ABOUT_MENU.getName());
+            aboutMenuItem.setMnemonic(MenuNameEnum.ABOUT_MENU.getMnemonic());
             aboutMenuItem.addActionListener(e -> aboutAction());
             helpMenu.add(aboutMenuItem);
 
             //---- feedbackMenuItem ----
-            feedbackMenuItem.setText("快速反馈");
-            feedbackMenuItem.setMnemonic('F');
+            feedbackMenuItem.setText(MenuNameEnum.FEEDBACK_MENU.getName());
+            feedbackMenuItem.setMnemonic(MenuNameEnum.FEEDBACK_MENU.getMnemonic());
             feedbackMenuItem.addActionListener(e -> feedbackAction());
             helpMenu.add(feedbackMenuItem);
 
             //---- donateMenuItem ----
-            donateMenuItem.setText("支持作者");
+            donateMenuItem.setText(MenuNameEnum.DONATE_MENU.getName());
             donateMenuItem.addActionListener(e -> donateAction());
             helpMenu.add(donateMenuItem);
         }
@@ -116,99 +154,30 @@ public class MainJFrame extends JFrame {
         jMenuBar.add(usersButton);
     }
 
-    private void dragChooseFile(DragJPanel dragChooseJPanel) {
 
-    }
-
-    private void clickChooseFile(JPanel choose) {
-        JPanel jPanel = JComponentUtils.getJPanel(new GridLayout(2, 2));
-        choose.add("chooseFile", jPanel);
-
-        JButton sourceButton = JComponentUtils.getJButton("选择文件或目录");
-        JButton targetButton = JComponentUtils.getJButton("输出目录");
-
-        jPanel.add("sourceButton", sourceButton);
-        jPanel.add("sourceFolder", sourceFolder);
-        jPanel.add("targetButton", targetButton);
-        jPanel.add("targetFolder", targetFolder);
-
-        sourceFolder.setHorizontalAlignment(SwingConstants.LEFT);
-
-        sourceButton.setHorizontalAlignment(SwingConstants.LEFT);
+    private void imageToPdfAction(ActionEvent e) {
+        jComboBox.setEnabled(true);
+        currentMode = MenuNameEnum.IMAGE_TO_PDF_MENU.getName();
+        sourceButton.setText("选择图片或目录");
         sourceButton.setToolTipText("支持图片格式" + String.join(",", SparrowConstants.SUPPORT_IMAGE_TYPE));
-        sourceButton.addActionListener(e -> {
-            JFileChooser jFileChooser = JComponentUtils.getJFileChooser();
-            int option = jFileChooser.showOpenDialog(choose);
-            if (option == JFileChooser.APPROVE_OPTION) {
-                File file = jFileChooser.getSelectedFile();
-                sourceFolder.setText(file.getAbsolutePath());
-                if (file.isFile()) {
-                    targetFolder.setText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) +  "pdf");
-                } else {
-                    targetFolder.setText(file.getAbsolutePath());
-                }
-            }
-        });
+        sourceFolder.setText("");
+        sourceFolder.setToolTipText("");
 
-        targetFolder.setHorizontalAlignment(SwingConstants.LEFT);
-
-        targetButton.setHorizontalAlignment(SwingConstants.LEFT);
-        targetButton.setToolTipText("默认与源目录一致");
-        targetButton.addActionListener(e -> {
-            JFileChooser jFileChooser = JComponentUtils.getJFileChooser();
-            jFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            int option = jFileChooser.showOpenDialog(choose);
-            if (option == JFileChooser.APPROVE_OPTION) {
-                File file = jFileChooser.getSelectedFile();
-                targetFolder.setText(file.getAbsolutePath());
-            }
-        });
+        targetButton.setText("输出目录");
+        targetButton.setToolTipText("输出目录默认与源文件一致");
+        targetFolder.setText("");
+        targetFolder.setToolTipText("");
     }
 
-    private void setControl(JPanel bottom) {
-        JPanel jPanel = JComponentUtils.getJPanel(new FlowLayout());
-        bottom.add(jPanel);
-        JComboBox<String> jComboBox = JComponentUtils.getJComboBox("独立输出", "合并输出");
-        jPanel.add(jComboBox);
-
-        JButton start = JComponentUtils.getJButton("开始");
-        start.setName("转换按钮");
-        start.setMnemonic(MouseEvent.MOUSE_PRESSED);
-        start.addActionListener(l -> {
-            if ("开始".equals(l.getActionCommand())) {
-                start.setEnabled(false);
-                if (sourceFolder.getText().isBlank()) {
-                    JOptionPane.showMessageDialog(this, "待转换文件不能为空", "警告", JOptionPane.WARNING_MESSAGE);
-                    start.setEnabled(true);
-                    return;
-                }
-
-                ConvertOutputFormat format = ConvertOutputFormat.defaultOutputFormat();
-                format.setSource(sourceFolder.getText());
-                format.setTarget(targetFolder.getText());
-                format.setSizeEnum(PageSizeEnum.ORIGINAL);
-                if (Objects.equals(jComboBox.getSelectedItem(), "合并输出")) {
-                    format.setOutputModeEnum(OutputModeEnum.MERGE);
-                }
-                try {
-                    PDF_SPARROW_CONVERTER_DELEGATE.convert(format);
-                    JOptionPane.showMessageDialog(this, "处理完成", "转换结果", JOptionPane.INFORMATION_MESSAGE);
-                    SwingUtilities.invokeLater(() -> {
-                        try {
-                            Desktop.getDesktop().open(new File(format.getTarget()));
-                        } catch (IOException e) {
-                            LogUtil.getLogger().error("打开{}异常, 详细原因：", format.getTarget(), e);
-                        }
-                    });
-                } catch (Exception e) {
-                    LogUtil.getLogger().error("转换异常: ", e);
-                    JOptionPane.showMessageDialog(this, "处理失败！", "转换结果", JOptionPane.ERROR_MESSAGE);
-                } finally {
-                    start.setEnabled(true);
-                }
-            }
-        });
-        jPanel.add(start);
+    private void pdfToWordAction(ActionEvent e) {
+        jComboBox.setEnabled(false);
+        currentMode = MenuNameEnum.PDF_TO_WORD_MENU.getName();
+        sourceButton.setText("选择PDF文件");
+        sourceButton.setToolTipText("点击选择待转换PDF文件");
+        sourceFolder.setText("");
+        targetButton.setText("输出目录");
+        targetButton.setToolTipText("输出目录默认与源文件一致");
+        targetFolder.setText("");
     }
 
     private void aboutAction() {
@@ -258,4 +227,149 @@ public class MainJFrame extends JFrame {
         imageIcon.setImage(imageIcon.getImage().getScaledInstance(230, 300, Image.SCALE_SMOOTH));
         JOptionPane.showMessageDialog(this, null, "支持作者", JOptionPane.INFORMATION_MESSAGE, imageIcon);
     }
+
+    private void clickChooseFile(JPanel choose) {
+        JPanel jPanel = JComponentUtils.getJPanel(new GridLayout(2, 2));
+        choose.add("chooseFile", jPanel);
+
+        jPanel.add("sourceButton", sourceButton);
+        jPanel.add("sourceFolder", sourceFolder);
+        jPanel.add("targetButton", targetButton);
+        jPanel.add("targetFolder", targetFolder);
+
+        sourceFolder.setHorizontalAlignment(SwingConstants.LEFT);
+        sourceButton.setHorizontalAlignment(SwingConstants.LEFT);
+        sourceButton.setToolTipText("支持图片格式" + String.join(",", SparrowConstants.SUPPORT_IMAGE_TYPE));
+        sourceButton.addActionListener(e -> {
+            JFileChooser jFileChooser = JComponentUtils.getJFileChooser();
+            if (currentMode.equals(MenuNameEnum.PDF_TO_WORD_MENU.getName())) {
+                jFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            } else {
+                jFileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+            }
+            int option = jFileChooser.showOpenDialog(null);
+            if (option == JFileChooser.APPROVE_OPTION) {
+                File file = jFileChooser.getSelectedFile();
+                if (Objects.isNull(file)) {
+                    return;
+                }
+
+                if (Objects.equals(currentMode, MenuNameEnum.IMAGE_TO_PDF_MENU.getName())) {
+                    boolean dirNoImg = false;
+                    if (file.isDirectory() && Objects.nonNull(file.list())) {
+                        String[] list = file.list(((dir, name) -> SparrowConstants.SUPPORT_IMAGE_TYPE.contains(name.substring(name.lastIndexOf(".") + 1))));
+                        dirNoImg = Objects.isNull(list) || list.length == 0;
+                    }
+                    if (dirNoImg || file.isFile() && !SparrowConstants.SUPPORT_IMAGE_TYPE.contains(file.getName().substring(file.getName().lastIndexOf('.') + 1))) {
+                        JOptionPane.showMessageDialog(null, "未发现有效的图片文件", "警告", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+
+                    sourceFolder.setText(file.getAbsolutePath());
+                    sourceFolder.setToolTipText(file.getAbsolutePath());
+                    if (file.isFile()) {
+                        targetFolder.setText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) +  "pdf");
+                        targetFolder.setToolTipText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) +  "pdf");
+                    } else {
+                        targetFolder.setText(file.getAbsolutePath());
+                        targetFolder.setToolTipText(file.getAbsolutePath());
+                    }
+                }
+
+                if (Objects.equals(currentMode, MenuNameEnum.PDF_TO_WORD_MENU.getName())) {
+                    if (!file.isFile() || !file.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+                        JOptionPane.showMessageDialog(null, "未发现有效的PDF文件", "警告", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+
+                    sourceFolder.setText(file.getAbsolutePath());
+                    sourceFolder.setToolTipText(file.getAbsolutePath());
+                    targetFolder.setText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) + "doc");
+                    targetFolder.setToolTipText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) + "doc");
+                }
+            }
+        });
+
+        targetFolder.setHorizontalAlignment(SwingConstants.LEFT);
+        targetButton.setHorizontalAlignment(SwingConstants.LEFT);
+        targetButton.setToolTipText("默认与源目录一致");
+        targetButton.addActionListener(e -> {
+            JFileChooser jFileChooser = JComponentUtils.getJFileChooser();
+            jFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            int option = jFileChooser.showOpenDialog(null);
+            if (option == JFileChooser.APPROVE_OPTION) {
+                File file = jFileChooser.getSelectedFile();
+                targetFolder.setText(file.getAbsolutePath());
+                targetFolder.setToolTipText(file.getAbsolutePath());
+            }
+        });
+    }
+
+
+    private void dragChooseFile(DragJPanel dragChooseJPanel) {
+
+    }
+
+    private void setControl(JPanel bottom) {
+        JPanel jPanel = JComponentUtils.getJPanel(new FlowLayout());
+        bottom.add(jPanel);
+
+        jPanel.add(jComboBox);
+        jPanel.add(start);
+
+        start.setMnemonic(MenuNameEnum.START_MENU.getMnemonic());
+        start.addActionListener(l -> {
+            if (!MenuNameEnum.START_MENU.getName().equals(l.getActionCommand())) {
+                return;
+            }
+
+            start.setEnabled(false);
+            if (sourceFolder.getText().isBlank()) {
+                JOptionPane.showMessageDialog(null, "待转换文件不能为空", "警告", JOptionPane.WARNING_MESSAGE);
+                start.setEnabled(true);
+                return;
+            }
+
+            try {
+                ConvertOutputFormat outputFormat = this.getOutputFormat();
+                SparrowThreadPool.execute(() -> PDF_SPARROW_CONVERTER_DELEGATE.convert(outputFormat)).join();
+                JOptionPane.showMessageDialog(null, "处理完成", "转换结果", JOptionPane.INFORMATION_MESSAGE);
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        Desktop.getDesktop().open(new File(outputFormat.getTarget()));
+                    } catch (IOException e) {
+                        LogUtil.getLogger().error("打开{}异常, 详细原因：", outputFormat.getTarget(), e);
+                    }
+                });
+            } catch (Exception e) {
+                LogUtil.getLogger().error("转换异常: ", e);
+                JOptionPane.showMessageDialog(null, "处理失败！", "转换结果", JOptionPane.ERROR_MESSAGE);
+            } finally {
+                start.setEnabled(true);
+            }
+        });
+    }
+
+    private ConvertOutputFormat getOutputFormat() {
+        ConvertOutputFormat format = ConvertOutputFormat.defaultOutputFormat();
+        format.setSource(sourceFolder.getText());
+        format.setTarget(targetFolder.getText());
+        format.setSizeEnum(PageSizeEnum.ORIGINAL);
+
+        if (Objects.equals(currentMode, MenuNameEnum.IMAGE_TO_PDF_MENU.getName())) {
+            format.setConvertFormatEnum(ConvertFormatEnum.IMAGE_TO_PDF);
+        } else if (Objects.equals(currentMode, MenuNameEnum.PDF_TO_WORD_MENU.getName())) {
+            format.setConvertFormatEnum(ConvertFormatEnum.PDF_TO_WORD);
+        } else {
+            throw new SparrowConverterException("不支持的转换模式");
+        }
+
+        if (Objects.equals(currentMode, MenuNameEnum.PDF_TO_WORD_MENU.getName()) ||
+                jComboBox.isEnabled() && Objects.equals(jComboBox.getSelectedItem(), "合并输出")) {
+            format.setOutputModeEnum(OutputModeEnum.MERGE);
+        }
+
+        return format;
+    }
+
 }

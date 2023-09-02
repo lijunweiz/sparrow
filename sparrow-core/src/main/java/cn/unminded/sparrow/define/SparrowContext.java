@@ -39,7 +39,10 @@ public class SparrowContext {
      */
     private String savePath;
 
+    private String planText;
+
     private Boolean convertResult;
+
 
     public List<PDDocumentInfo> getPdList() {
         return pdList;
@@ -92,6 +95,15 @@ public class SparrowContext {
 
     public SparrowContext setSavePath(String savePath) {
         this.savePath = savePath;
+        return this;
+    }
+
+    public String getPlanText() {
+        return planText;
+    }
+
+    public SparrowContext setPlanText(String planText) {
+        this.planText = planText;
         return this;
     }
 

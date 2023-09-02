@@ -1,9 +1,6 @@
 package cn.unminded.sparrow.define;
 
-import cn.unminded.sparrow.util.MarginWidthEnum;
-import cn.unminded.sparrow.util.OutputModeEnum;
-import cn.unminded.sparrow.util.PageOrientationEnum;
-import cn.unminded.sparrow.util.PageSizeEnum;
+import cn.unminded.sparrow.util.*;
 
 public class ConvertOutputFormat {
 
@@ -14,6 +11,8 @@ public class ConvertOutputFormat {
     private PageOrientationEnum orientationEnum;
 
     private OutputModeEnum outputModeEnum;
+
+    private ConvertFormatEnum convertFormatEnum;
 
     private String source;
 
@@ -55,6 +54,15 @@ public class ConvertOutputFormat {
         return this;
     }
 
+    public ConvertFormatEnum getConvertFormatEnum() {
+        return convertFormatEnum;
+    }
+
+    public ConvertOutputFormat setConvertFormatEnum(ConvertFormatEnum convertFormatEnum) {
+        this.convertFormatEnum = convertFormatEnum;
+        return this;
+    }
+
     public String getSource() {
         return source;
     }
@@ -78,7 +86,9 @@ public class ConvertOutputFormat {
                 .setSizeEnum(PageSizeEnum.ORIGINAL)
                 .setMarginWidthEnum(MarginWidthEnum.NORMAL)
                 .setOrientationEnum(PageOrientationEnum.VERTICAL)
-                .setOutputModeEnum(OutputModeEnum.ONE_BY_ONE);
+                .setOutputModeEnum(OutputModeEnum.ONE_BY_ONE)
+                .setConvertFormatEnum(ConvertFormatEnum.IMAGE_TO_PDF)
+                ;
     }
 
     @Override
@@ -88,6 +98,7 @@ public class ConvertOutputFormat {
                 ", marginWidthEnum=" + marginWidthEnum +
                 ", orientationEnum=" + orientationEnum +
                 ", outputModeEnum=" + outputModeEnum +
+                ", convertFormatEnum=" + convertFormatEnum +
                 ", source=" + source +
                 ", target=" + target +
                 '}';
