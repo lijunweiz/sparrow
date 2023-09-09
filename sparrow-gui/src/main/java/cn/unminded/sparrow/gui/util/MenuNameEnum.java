@@ -9,6 +9,10 @@ public enum MenuNameEnum {
 
     PDF_TO_WORD_MENU("PDF转WORD", 'W'),
 
+    PDF_SPLIT("PDF分割", 'J'),
+
+    PDF_MERGE("PDF合并", 'M'),
+
     HELP_MENU("帮助", 'H'),
 
     ABOUT_MENU("关于", 'A'),

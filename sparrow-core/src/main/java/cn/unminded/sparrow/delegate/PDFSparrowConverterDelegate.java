@@ -5,6 +5,7 @@ import cn.unminded.sparrow.define.SparrowContext;
 import cn.unminded.sparrow.define.SparrowConverterException;
 import cn.unminded.sparrow.metric.ConvertMetric;
 import cn.unminded.sparrow.pdf.ImageToPDFSparrowConverter;
+import cn.unminded.sparrow.pdf.PDFGeometryConverter;
 import cn.unminded.sparrow.pdf.PDFSparrowConverter;
 import cn.unminded.sparrow.pdf.PDFToWordSparrowConverter;
 import cn.unminded.sparrow.util.ConvertFormatEnum;
@@ -25,6 +26,9 @@ public class PDFSparrowConverterDelegate {
     public PDFSparrowConverterDelegate() {
         pDFSparrowConverterMap.put(ConvertFormatEnum.IMAGE_TO_PDF, new ImageToPDFSparrowConverter());
         pDFSparrowConverterMap.put(ConvertFormatEnum.PDF_TO_WORD, new PDFToWordSparrowConverter());
+        PDFGeometryConverter pdfGeometryConverter = new PDFGeometryConverter();
+        pDFSparrowConverterMap.put(ConvertFormatEnum.PDF_SPLIT, pdfGeometryConverter);
+        pDFSparrowConverterMap.put(ConvertFormatEnum.PDF_MERGE, pdfGeometryConverter);
     }
 
     public ConvertMetric convert(ConvertOutputFormat format) {
@@ -35,6 +39,7 @@ public class PDFSparrowConverterDelegate {
                 .setPageSizeEnum(format.getSizeEnum())
                 .setSourcePath(format.getSource())
                 .setSavePath(format.getTarget())
+                .setChangeInfo(format.getPdfChangeInfo())
                 .setConvertResult(Boolean.FALSE);
         try {
             logger.info("开始处理: {}", context.getConvertFormatEnum());

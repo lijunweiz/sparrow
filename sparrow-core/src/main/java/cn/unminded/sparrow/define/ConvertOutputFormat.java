@@ -1,5 +1,6 @@
 package cn.unminded.sparrow.define;
 
+import cn.unminded.sparrow.info.ChangeInfo;
 import cn.unminded.sparrow.util.*;
 
 public class ConvertOutputFormat {
@@ -13,6 +14,8 @@ public class ConvertOutputFormat {
     private OutputModeEnum outputModeEnum;
 
     private ConvertFormatEnum convertFormatEnum;
+
+    private ChangeInfo pdfChangeInfo;
 
     private String source;
 
@@ -63,6 +66,15 @@ public class ConvertOutputFormat {
         return this;
     }
 
+    public ChangeInfo getPdfChangeInfo() {
+        return pdfChangeInfo;
+    }
+
+    public ConvertOutputFormat setPdfChangeInfo(ChangeInfo pdfChangeInfo) {
+        this.pdfChangeInfo = pdfChangeInfo;
+        return this;
+    }
+
     public String getSource() {
         return source;
     }
@@ -99,6 +111,7 @@ public class ConvertOutputFormat {
                 ", orientationEnum=" + orientationEnum +
                 ", outputModeEnum=" + outputModeEnum +
                 ", convertFormatEnum=" + convertFormatEnum +
+                ", pdfChangeInfo=" + pdfChangeInfo +
                 ", source=" + source +
                 ", target=" + target +
                 '}';

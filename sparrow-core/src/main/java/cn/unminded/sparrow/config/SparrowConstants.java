@@ -9,4 +9,6 @@ public class SparrowConstants {
 
     public static final List<String> SUPPORT_IMAGE_TYPE = Arrays.asList("jpg", "jpeg", "png", "tif", "tiff", "gif", "bmp");
 
+    public static Integer INT_0 = 0;
+
 }

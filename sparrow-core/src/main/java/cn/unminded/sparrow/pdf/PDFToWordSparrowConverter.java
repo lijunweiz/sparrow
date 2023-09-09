@@ -1,11 +1,12 @@
 package cn.unminded.sparrow.pdf;
 
 import cn.unminded.sparrow.define.SparrowContext;
+import cn.unminded.sparrow.define.SparrowConverter;
 import cn.unminded.sparrow.define.SparrowConverterException;
 
 import java.io.IOException;
 
-public class PDFToWordSparrowConverter extends AbstractPDFSparrowConverter implements PDFSparrowConverter {
+public class PDFToWordSparrowConverter extends AbstractPDFSparrowConverter implements SparrowConverter {
 
     @Override
     public void pdfToWord(SparrowContext context) throws SparrowConverterException {

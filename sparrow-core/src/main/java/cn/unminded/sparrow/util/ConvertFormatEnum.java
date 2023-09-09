@@ -6,4 +6,8 @@ public enum ConvertFormatEnum {
 
     PDF_TO_WORD,
 
+    PDF_SPLIT,
+
+    PDF_MERGE,
+
 }

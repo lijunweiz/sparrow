@@ -1,10 +1,12 @@
 package cn.unminded.sparrow.define;
 
+import cn.unminded.sparrow.info.ChangeInfo;
 import cn.unminded.sparrow.info.PDDocumentInfo;
 import cn.unminded.sparrow.util.ConvertFormatEnum;
 import cn.unminded.sparrow.util.OutputModeEnum;
 import cn.unminded.sparrow.util.PageSizeEnum;
 
+import java.io.File;
 import java.util.List;
 
 public class SparrowContext {
@@ -35,11 +37,21 @@ public class SparrowContext {
     private String sourcePath;
 
     /**
+     * 文件列表
+     */
+    private List<File> sourceFileList;
+
+    /**
      * 目标文件路径
      */
     private String savePath;
 
+    /**
+     * pdf转word时{@link ConvertFormatEnum#PDF_TO_WORD}，转换后的文本
+     */
     private String planText;
+
+    private ChangeInfo changeInfo;
 
     private Boolean convertResult;
 
@@ -89,6 +101,15 @@ public class SparrowContext {
         return this;
     }
 
+    public List<File> getSourceFileList() {
+        return sourceFileList;
+    }
+
+    public SparrowContext setSourceFileList(List<File> sourceFileList) {
+        this.sourceFileList = sourceFileList;
+        return this;
+    }
+
     public String getSavePath() {
         return savePath;
     }
@@ -104,6 +125,15 @@ public class SparrowContext {
 
     public SparrowContext setPlanText(String planText) {
         this.planText = planText;
+        return this;
+    }
+
+    public ChangeInfo getChangeInfo() {
+        return changeInfo;
+    }
+
+    public SparrowContext setChangeInfo(ChangeInfo changeInfo) {
+        this.changeInfo = changeInfo;
         return this;
     }
 

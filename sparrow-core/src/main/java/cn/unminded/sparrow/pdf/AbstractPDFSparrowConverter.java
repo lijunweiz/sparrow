@@ -19,11 +19,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Objects;
 
-import static cn.unminded.sparrow.util.ConvertFormatEnum.IMAGE_TO_PDF;
-import static cn.unminded.sparrow.util.ConvertFormatEnum.PDF_TO_WORD;
+import static cn.unminded.sparrow.util.ConvertFormatEnum.*;
 
 public abstract class AbstractPDFSparrowConverter implements PDFSparrowConverter {
 
@@ -31,6 +30,33 @@ public abstract class AbstractPDFSparrowConverter implements PDFSparrowConverter
 
     @Override
     public void prepare(SparrowContext context) {
+        if (Objects.equals(context.getConvertFormatEnum(), IMAGE_TO_PDF)) {
+            if (Objects.equals(context.getOutputModeEnum(), OutputModeEnum.ONE_BY_ONE)) {
+                String[] fileList = getFileList(context.getSourcePath());
+                if (Objects.isNull(fileList) || fileList.length == 0) {
+                    context.setPdList(null);
+                } else {
+                    context.setPdList(new ArrayList<>(fileList.length));
+                    for (int i = 0; i < fileList.length; i++) {
+                        context.getPdList().add(new PDDocumentInfo().setPdDocument(new PDDocument()));
+                    }
+                }
+            } else {
+                context.setPdList(Collections.singletonList(new PDDocumentInfo().setPdDocument(new PDDocument())));
+                context.getPdList().get(0).setPageCount(this.pageCount(context.getSourcePath()));
+            }
+
+            context.getPdList().forEach(pdInfo -> {
+                pdInfo.getPdDocument().setDocumentInformation(PDFBoxUtils.getPDDocumentInformation());
+                pdInfo.getPdDocument().setVersion(PDFBoxUtils.PD_DOCUMENT_VERSION);
+            });
+
+            File target = new File(context.getSavePath());
+            if (!context.getSavePath().contains("pdf") && !target.exists() && !target.mkdirs()) {
+                throw new SparrowConverterException(target.getAbsolutePath() + "创建失败");
+            }
+        }
+
         if (Objects.equals(context.getConvertFormatEnum(), PDF_TO_WORD)) {
             try {
                 context.setPdList(new ArrayList<>(1));
@@ -38,32 +64,6 @@ public abstract class AbstractPDFSparrowConverter implements PDFSparrowConverter
             } catch (IOException e) {
                 throw new SparrowConverterException(e);
             }
-            return;
-        }
-
-        if (Objects.equals(context.getOutputModeEnum(), OutputModeEnum.ONE_BY_ONE)) {
-            String[] fileList = getFileList(context.getSourcePath());
-            if (Objects.isNull(fileList) || fileList.length == 0) {
-                context.setPdList(null);
-            } else {
-                context.setPdList(new ArrayList<>(fileList.length));
-                for (int i = 0; i < fileList.length; i++) {
-                    context.getPdList().add(new PDDocumentInfo().setPdDocument(new PDDocument()));
-                }
-            }
-        } else {
-            context.setPdList(Arrays.asList(new PDDocumentInfo().setPdDocument(new PDDocument())));
-            context.getPdList().get(0).setPageCount(this.pageCount(context.getSourcePath()));
-        }
-
-        context.getPdList().forEach(pdInfo -> {
-            pdInfo.getPdDocument().setDocumentInformation(PDFBoxUtils.getPDDocumentInformation());
-            pdInfo.getPdDocument().setVersion(PDFBoxUtils.PD_DOCUMENT_VERSION);
-        });
-
-        File target = new File(context.getSavePath());
-        if (!context.getSavePath().contains("pdf") && !target.exists()) {
-            target.mkdirs();
         }
     }
 
@@ -74,6 +74,10 @@ public abstract class AbstractPDFSparrowConverter implements PDFSparrowConverter
                 imageToPdf(context);
             } else if (Objects.equals(context.getConvertFormatEnum(), PDF_TO_WORD)) {
                 pdfToWord(context);
+            } else if (Objects.equals(context.getConvertFormatEnum(), PDF_SPLIT)) {
+                pdfSplit(context);
+            } else if (Objects.equals(context.getConvertFormatEnum(), PDF_MERGE)) {
+                pdfMerge(context);
             } else {
                 throw new SparrowConverterException("不支持的文件格式");
             }
@@ -83,12 +87,26 @@ public abstract class AbstractPDFSparrowConverter implements PDFSparrowConverter
         }
     }
 
-    public void imageToPdf(SparrowContext context) throws SparrowConverterException {
+    protected void imageToPdf(SparrowContext context) throws SparrowConverterException {
         // 对应子类必须实现
+        throw new UnsupportedOperationException();
     }
 
-    public void pdfToWord(SparrowContext context) throws SparrowConverterException {
+    protected void pdfToWord(SparrowContext context) throws SparrowConverterException {
         // 对应子类必须实现
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * pdf拆分，页面提取
+     * @param context
+     */
+    protected void pdfSplit(SparrowContext context) throws SparrowConverterException {
+        throw new UnsupportedOperationException();
+    }
+
+    protected void pdfMerge(SparrowContext context) throws SparrowConverterException {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -104,16 +122,18 @@ public abstract class AbstractPDFSparrowConverter implements PDFSparrowConverter
             } finally {
                 IOUtils.closeQuietly(writer);
             }
-
             return;
         }
 
-        for (PDDocumentInfo pdDocumentInfo : context.getPdList()) {
-            try {
-                pdDocumentInfo.getPdDocument().save(pdDocumentInfo.getSaveFileName());
-                pdDocumentInfo.getPdDocument().close();
-            } catch (Exception e) {
-                logger.error("文件保存失败, 错误原因: ", e);
+        if (Objects.equals(context.getConvertFormatEnum(), IMAGE_TO_PDF)
+                || Objects.equals(context.getConvertFormatEnum(), PDF_SPLIT)) {
+            for (PDDocumentInfo pdDocumentInfo : context.getPdList()) {
+                try {
+                    pdDocumentInfo.getPdDocument().save(pdDocumentInfo.getSaveFileName());
+                    pdDocumentInfo.getPdDocument().close();
+                } catch (Exception e) {
+                    logger.error("文件保存失败, 错误原因: ", e);
+                }
             }
         }
     }
@@ -163,7 +183,7 @@ public abstract class AbstractPDFSparrowConverter implements PDFSparrowConverter
         File sourceF = new File(source);
         File targetF = new File(target);
         if (targetF.isDirectory()) {
-            return targetF + "\\" + sourceF.getName().substring(0, sourceF.getName().lastIndexOf('.') + 1) + "pdf";
+            return targetF + File.separator + sourceF.getName().substring(0, sourceF.getName().lastIndexOf('.') + 1) + "pdf";
         }
 
         return target.substring(0, target.lastIndexOf('.') + 1) + "pdf";

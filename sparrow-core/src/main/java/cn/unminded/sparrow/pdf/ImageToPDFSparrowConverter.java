@@ -39,7 +39,7 @@ public class ImageToPDFSparrowConverter extends AbstractPDFSparrowConverter {
 
     private void handler(PDDocumentInfo pdDocumentInfo, String fileName, String sourcePath, String savePath, PageSizeEnum pageSizeEnum) throws IOException {
         pdDocumentInfo.setSaveFileName(super.getSavePath(fileName, savePath));
-        PDImageXObject image = PDImageXObject.createFromFile(sourcePath + "\\" + fileName, pdDocumentInfo.getPdDocument());
+        PDImageXObject image = PDImageXObject.createFromFile(sourcePath + File.separator + fileName, pdDocumentInfo.getPdDocument());
         PDPage pdPage = super.getPage(pageSizeEnum, image);
         try (PDPageContentStream pdPageContentStream = new PDPageContentStream(pdDocumentInfo.getPdDocument(), pdPage)) {
             pdPageContentStream.drawImage(image, 0, 0);

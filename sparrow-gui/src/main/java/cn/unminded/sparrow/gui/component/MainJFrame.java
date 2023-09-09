@@ -1,21 +1,22 @@
 package cn.unminded.sparrow.gui.component;
 
+import cn.unminded.sparrow.config.SparrowConstants;
 import cn.unminded.sparrow.config.SparrowThreadPool;
 import cn.unminded.sparrow.define.ConvertOutputFormat;
-import cn.unminded.sparrow.config.SparrowConstants;
 import cn.unminded.sparrow.define.SparrowConverterException;
 import cn.unminded.sparrow.delegate.PDFSparrowConverterDelegate;
+import cn.unminded.sparrow.gui.util.JComponentUtils;
 import cn.unminded.sparrow.gui.util.LogUtil;
 import cn.unminded.sparrow.gui.util.MenuNameEnum;
-import cn.unminded.sparrow.metric.ConvertMetric;
+import cn.unminded.sparrow.gui.util.UIUtils;
+import cn.unminded.sparrow.info.ChangeInfo;
 import cn.unminded.sparrow.util.ConvertFormatEnum;
 import cn.unminded.sparrow.util.OutputModeEnum;
 import cn.unminded.sparrow.util.PageSizeEnum;
-import cn.unminded.sparrow.gui.util.UIUtils;
-import cn.unminded.sparrow.gui.util.JComponentUtils;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.extras.components.FlatButton;
+import org.apache.pdfbox.pdmodel.PDDocument;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,9 +26,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Year;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.function.BiConsumer;
 
 public class MainJFrame extends JFrame {
 
@@ -40,6 +41,7 @@ public class MainJFrame extends JFrame {
     private JTextField  targetFolder = null;
     private JComboBox<String> jComboBox = null;
     private JButton start = null;
+    JPanel pageSet = null;
 
     private static final PDFSparrowConverterDelegate PDF_SPARROW_CONVERTER_DELEGATE;
 
@@ -50,6 +52,7 @@ public class MainJFrame extends JFrame {
 
     public MainJFrame() {
         Dimension dimension = new Dimension(700, 500);
+        setResizable(false);
         setTitle("Sparrow PDF");
         setSize(dimension);
         setLocation(UIUtils.getPoint(dimension));
@@ -74,6 +77,8 @@ public class MainJFrame extends JFrame {
         JMenu transModeMenu = new JMenu();
         JMenuItem imageToPdfMenuItem = new JMenuItem();
         JMenuItem pdfToWordMenuItem = new JMenuItem();
+        JMenuItem pdfSplitMenuItem = new JMenuItem();
+        JMenuItem pdfMergeMenuItem = new JMenuItem();
 
         JMenu helpMenu = new JMenu();
         JMenuItem aboutMenuItem = new JMenuItem();
@@ -93,6 +98,7 @@ public class MainJFrame extends JFrame {
         {
             transModeMenu.setText(MenuNameEnum.TRANS_MODE_MENU.getName());
             transModeMenu.setMnemonic(MenuNameEnum.TRANS_MODE_MENU.getMnemonic());
+
             //---- imageToPdfMenuItem ----
             imageToPdfMenuItem.setText(MenuNameEnum.IMAGE_TO_PDF_MENU.getName());
             imageToPdfMenuItem.setMnemonic(MenuNameEnum.IMAGE_TO_PDF_MENU.getMnemonic());
@@ -104,6 +110,18 @@ public class MainJFrame extends JFrame {
             pdfToWordMenuItem.setMnemonic(MenuNameEnum.PDF_TO_WORD_MENU.getMnemonic());
             pdfToWordMenuItem.addActionListener(this::pdfToWordAction);
             transModeMenu.add(pdfToWordMenuItem);
+
+            //---- pdfSplitMenuItem ----
+            pdfSplitMenuItem.setText(MenuNameEnum.PDF_SPLIT.getName());
+            pdfSplitMenuItem.setMnemonic(MenuNameEnum.PDF_SPLIT.getMnemonic());
+            pdfSplitMenuItem.addActionListener(this::pdfSplitAction);
+            transModeMenu.add(pdfSplitMenuItem);
+
+            //---- pdfMergeMenuItem ----
+            pdfMergeMenuItem.setText(MenuNameEnum.PDF_MERGE.getName());
+            pdfMergeMenuItem.setMnemonic(MenuNameEnum.PDF_MERGE.getMnemonic());
+            pdfMergeMenuItem.addActionListener(this::pdfMergeAction);
+            transModeMenu.add(pdfMergeMenuItem);
         }
         jMenuBar.add(transModeMenu);
 
@@ -134,7 +152,7 @@ public class MainJFrame extends JFrame {
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 
-        JPanel clickChooseJPanel = JComponentUtils.getJPanel(new GridLayout());
+        JPanel clickChooseJPanel = JComponentUtils.getJPanel(new GridLayout(2, 1));
         DragJPanel dragChooseJPanel = new DragJPanel(new FlowLayout());
         JPanel controlJPanel = JComponentUtils.getJPanel(new GridLayout(1, 3));
         contentPane.add(clickChooseJPanel, BorderLayout.NORTH);
@@ -154,7 +172,6 @@ public class MainJFrame extends JFrame {
         jMenuBar.add(usersButton);
     }
 
-
     private void imageToPdfAction(ActionEvent e) {
         jComboBox.setEnabled(true);
         currentMode = MenuNameEnum.IMAGE_TO_PDF_MENU.getName();
@@ -167,17 +184,39 @@ public class MainJFrame extends JFrame {
         targetButton.setToolTipText("输出目录默认与源文件一致");
         targetFolder.setText("");
         targetFolder.setToolTipText("");
+
+        setPageSetJPanel();
     }
 
     private void pdfToWordAction(ActionEvent e) {
         jComboBox.setEnabled(false);
         currentMode = MenuNameEnum.PDF_TO_WORD_MENU.getName();
         sourceButton.setText("选择PDF文件");
-        sourceButton.setToolTipText("点击选择待转换PDF文件");
+        sourceButton.setToolTipText("点击选择目标PDF文件");
         sourceFolder.setText("");
         targetButton.setText("输出目录");
         targetButton.setToolTipText("输出目录默认与源文件一致");
         targetFolder.setText("");
+
+        setPageSetJPanel();
+    }
+
+    private void pdfSplitAction(ActionEvent e) {
+        currentMode = MenuNameEnum.PDF_SPLIT.getName();
+        sourceButton.setText("选择PDF文件");
+        sourceButton.setToolTipText("点击选择目标PDF文件");
+        targetButton.setEnabled(false);
+
+        setPageSetJPanel();
+    }
+
+    private void pdfMergeAction(ActionEvent e) {
+        currentMode = MenuNameEnum.PDF_MERGE.getName();
+        sourceButton.setText("选择PDF文件");
+        sourceButton.setToolTipText("点击选择目标PDF文件");
+        targetButton.setEnabled(false);
+
+        setPageSetJPanel();
     }
 
     private void aboutAction() {
@@ -228,9 +267,14 @@ public class MainJFrame extends JFrame {
         JOptionPane.showMessageDialog(this, null, "支持作者", JOptionPane.INFORMATION_MESSAGE, imageIcon);
     }
 
+    private java.util.List<String> actionNameList = Arrays.asList(MenuNameEnum.PDF_TO_WORD_MENU.getName(), MenuNameEnum.PDF_MERGE.getName(), MenuNameEnum.PDF_SPLIT.getName());
+
     private void clickChooseFile(JPanel choose) {
         JPanel jPanel = JComponentUtils.getJPanel(new GridLayout(2, 2));
+        pageSet = JComponentUtils.getJPanel(new FlowLayout(FlowLayout.LEFT));
         choose.add("chooseFile", jPanel);
+        choose.add("pageSet", pageSet);
+        this.outPageControl(pageSet);
 
         jPanel.add("sourceButton", sourceButton);
         jPanel.add("sourceFolder", sourceFolder);
@@ -242,7 +286,7 @@ public class MainJFrame extends JFrame {
         sourceButton.setToolTipText("支持图片格式" + String.join(",", SparrowConstants.SUPPORT_IMAGE_TYPE));
         sourceButton.addActionListener(e -> {
             JFileChooser jFileChooser = JComponentUtils.getJFileChooser();
-            if (currentMode.equals(MenuNameEnum.PDF_TO_WORD_MENU.getName())) {
+            if (actionNameList.contains(currentMode)) {
                 jFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
             } else {
                 jFileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
@@ -253,40 +297,7 @@ public class MainJFrame extends JFrame {
                 if (Objects.isNull(file)) {
                     return;
                 }
-
-                if (Objects.equals(currentMode, MenuNameEnum.IMAGE_TO_PDF_MENU.getName())) {
-                    boolean dirNoImg = false;
-                    if (file.isDirectory() && Objects.nonNull(file.list())) {
-                        String[] list = file.list(((dir, name) -> SparrowConstants.SUPPORT_IMAGE_TYPE.contains(name.substring(name.lastIndexOf(".") + 1))));
-                        dirNoImg = Objects.isNull(list) || list.length == 0;
-                    }
-                    if (dirNoImg || file.isFile() && !SparrowConstants.SUPPORT_IMAGE_TYPE.contains(file.getName().substring(file.getName().lastIndexOf('.') + 1))) {
-                        JOptionPane.showMessageDialog(null, "未发现有效的图片文件", "警告", JOptionPane.WARNING_MESSAGE);
-                        return;
-                    }
-
-                    sourceFolder.setText(file.getAbsolutePath());
-                    sourceFolder.setToolTipText(file.getAbsolutePath());
-                    if (file.isFile()) {
-                        targetFolder.setText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) +  "pdf");
-                        targetFolder.setToolTipText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) +  "pdf");
-                    } else {
-                        targetFolder.setText(file.getAbsolutePath());
-                        targetFolder.setToolTipText(file.getAbsolutePath());
-                    }
-                }
-
-                if (Objects.equals(currentMode, MenuNameEnum.PDF_TO_WORD_MENU.getName())) {
-                    if (!file.isFile() || !file.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
-                        JOptionPane.showMessageDialog(null, "未发现有效的PDF文件", "警告", JOptionPane.WARNING_MESSAGE);
-                        return;
-                    }
-
-                    sourceFolder.setText(file.getAbsolutePath());
-                    sourceFolder.setToolTipText(file.getAbsolutePath());
-                    targetFolder.setText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) + "doc");
-                    targetFolder.setToolTipText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) + "doc");
-                }
+                this.setSourceButton(file, jFileChooser.getSelectedFiles());
             }
         });
 
@@ -305,9 +316,67 @@ public class MainJFrame extends JFrame {
         });
     }
 
+    private void outPageControl(JPanel pageSet) {
+        pageSet.add(JComponentUtils.getJLabel("<html>&nbsp;&nbsp;&nbsp;开始页: </html>"));
+        JTextField startPageTextField = new JTextField();
+        pageSet.add(startPageTextField);
+        JLabel splitLength = JComponentUtils.getJLabel("<html>&nbsp;&nbsp;分割大小: </html>");
+        splitLength.setToolTipText("当分割大小是0时，意味着开始页和结束页之间的页面不会拆分");
+        pageSet.add(splitLength);
+        JTextField pageLengthTextField = new JTextField();
+        pageSet.add(pageLengthTextField);
+        pageSet.add(JComponentUtils.getJLabel("<html>&nbsp;&nbsp;结束页: </html>"));
+        JTextField endPageTextField = new JTextField();
+        pageSet.add(endPageTextField);
+
+        pageSet.setEnabled(false);
+    }
+
+    private void setSourceButton(File file, File[] selectedFiles) {
+        if (Objects.equals(currentMode, MenuNameEnum.IMAGE_TO_PDF_MENU.getName())) {
+            boolean dirNoImg = false;
+            if (file.isDirectory() && Objects.nonNull(file.list())) {
+                String[] list = file.list(((dir, name) -> SparrowConstants.SUPPORT_IMAGE_TYPE.contains(name.substring(name.lastIndexOf(".") + 1))));
+                dirNoImg = Objects.isNull(list) || list.length == 0;
+            }
+            if (dirNoImg || file.isFile() && !SparrowConstants.SUPPORT_IMAGE_TYPE.contains(file.getName().substring(file.getName().lastIndexOf('.') + 1))) {
+                JOptionPane.showMessageDialog(null, "未发现有效的图片文件", "警告", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            sourceFolder.setText(file.getAbsolutePath());
+            sourceFolder.setToolTipText(file.getAbsolutePath());
+            if (file.isFile()) {
+                targetFolder.setText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) +  "pdf");
+                targetFolder.setToolTipText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) +  "pdf");
+            } else {
+                targetFolder.setText(file.getAbsolutePath());
+                targetFolder.setToolTipText(file.getAbsolutePath());
+            }
+        }
+
+        if (Objects.equals(currentMode, MenuNameEnum.PDF_TO_WORD_MENU.getName())
+                || Objects.equals(currentMode, MenuNameEnum.PDF_SPLIT.getName())) {
+            if (!file.isFile() || !file.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+                JOptionPane.showMessageDialog(null, "未发现有效的PDF文件", "警告", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            sourceFolder.setText(file.getAbsolutePath());
+            sourceFolder.setToolTipText(file.getAbsolutePath());
+            if (Objects.equals(currentMode, MenuNameEnum.PDF_TO_WORD_MENU.getName())) {
+                targetFolder.setText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) + "doc");
+                targetFolder.setToolTipText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf('.') + 1) + "doc");
+            } else {
+                targetFolder.setText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf(File.separator)));
+                targetFolder.setToolTipText(file.getAbsolutePath().substring(0, file.getAbsolutePath().lastIndexOf(File.separator)));
+            }
+        }
+    }
+
 
     private void dragChooseFile(DragJPanel dragChooseJPanel) {
-
+        // ignore
     }
 
     private void setControl(JPanel bottom) {
@@ -330,8 +399,16 @@ public class MainJFrame extends JFrame {
                 return;
             }
 
+            final ConvertOutputFormat outputFormat;
             try {
-                ConvertOutputFormat outputFormat = this.getOutputFormat();
+                outputFormat = this.getOutputFormat();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, e.getLocalizedMessage(), "警告", JOptionPane.WARNING_MESSAGE);
+                start.setEnabled(true);
+                return;
+            }
+
+            try {
                 SparrowThreadPool.execute(() -> PDF_SPARROW_CONVERTER_DELEGATE.convert(outputFormat)).join();
                 JOptionPane.showMessageDialog(null, "处理完成", "转换结果", JOptionPane.INFORMATION_MESSAGE);
                 SwingUtilities.invokeLater(() -> {
@@ -360,16 +437,73 @@ public class MainJFrame extends JFrame {
             format.setConvertFormatEnum(ConvertFormatEnum.IMAGE_TO_PDF);
         } else if (Objects.equals(currentMode, MenuNameEnum.PDF_TO_WORD_MENU.getName())) {
             format.setConvertFormatEnum(ConvertFormatEnum.PDF_TO_WORD);
+        } else if (Objects.equals(currentMode, MenuNameEnum.PDF_SPLIT.getName())) {
+            format.setConvertFormatEnum(ConvertFormatEnum.PDF_SPLIT);
+            format.setPdfChangeInfo(this.getPdfChangeInfo());
+        } else if (Objects.equals(currentMode, MenuNameEnum.PDF_MERGE.getName())) {
+            format.setConvertFormatEnum(ConvertFormatEnum.PDF_MERGE);
         } else {
             throw new SparrowConverterException("不支持的转换模式");
         }
 
-        if (Objects.equals(currentMode, MenuNameEnum.PDF_TO_WORD_MENU.getName()) ||
-                jComboBox.isEnabled() && Objects.equals(jComboBox.getSelectedItem(), "合并输出")) {
+        if (Objects.equals(currentMode, MenuNameEnum.PDF_TO_WORD_MENU.getName())
+                || Objects.equals(currentMode, MenuNameEnum.PDF_MERGE.getName())
+                || jComboBox.isEnabled() && Objects.equals(jComboBox.getSelectedItem(), "合并输出")) {
             format.setOutputModeEnum(OutputModeEnum.MERGE);
         }
 
         return format;
+    }
+
+    /**
+     * 页面拆分或页面分割
+     * @return changeInfo
+     */
+    private ChangeInfo getPdfChangeInfo() {
+        JTextField startPage = (JTextField) pageSet.getComponent(1);
+        JTextField pageSize = (JTextField) pageSet.getComponent(3);
+        JTextField endPage = (JTextField) pageSet.getComponent(5);
+
+        ChangeInfo changeInfo = new ChangeInfo();
+        try {
+            changeInfo.setStartPage(Integer.parseInt(startPage.getText()));
+            changeInfo.setSplitLength(Integer.parseInt(pageSize.getText()));
+            changeInfo.setEndPage(Integer.parseInt(endPage.getText()));
+        } catch (NumberFormatException e) {
+            throw new SparrowConverterException("开始页: " + startPage.getText() + "，分割大小: " + pageSize.getText() + "，结束页: " + endPage.getText() + "，\n三者中有非数字字符，请核对");
+        }
+
+        if (changeInfo.getStartPage() < 1) {
+            throw new SparrowConverterException("开始页不能小于1");
+        }
+
+        if (changeInfo.getStartPage() > changeInfo.getEndPage()) {
+            throw new SparrowConverterException("开始页不能大于结束页");
+        }
+
+        if (changeInfo.getEndPage() - changeInfo.getStartPage() < changeInfo.getSplitLength()) {
+            throw new SparrowConverterException("页面分割大小不能大于结束页和结束页之间的页面数量");
+        }
+
+        try {
+            PDDocument load = PDDocument.load(new File(sourceFolder.getText()));
+            int count = load.getPages().getCount();
+            if (changeInfo.getStartPage() > count || changeInfo.getSplitLength() > count || changeInfo.getEndPage() > count) {
+                throw new SparrowConverterException("开始页: " + startPage.getText() + "分割大小: " + pageSize.getText() + "结束页: " + endPage.getText() + "，三者均不能大于文档的总页数:" + count);
+            }
+        } catch (IOException e) {
+            LogUtil.getLogger().error("{}读取失败", sourceFolder.getText(), e);
+            throw new SparrowConverterException(sourceFolder.getText() + "读取失败");
+        }
+
+        return changeInfo;
+    }
+
+    /**
+     * 统一处理页面的功能按钮
+     */
+    private void setPageSetJPanel() {
+        pageSet.setVisible(Objects.equals(currentMode, MenuNameEnum.PDF_SPLIT.getName()));
     }
 
 }

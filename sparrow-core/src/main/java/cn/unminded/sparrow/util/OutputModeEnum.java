@@ -4,7 +4,9 @@ public enum OutputModeEnum {
 
     MERGE,
 
-    ONE_BY_ONE
+    ONE_BY_ONE,
+
+    SPECIAL_PAGE,
 
 
 }
