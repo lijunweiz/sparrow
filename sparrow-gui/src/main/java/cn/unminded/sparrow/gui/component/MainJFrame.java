@@ -12,11 +12,11 @@ import cn.unminded.sparrow.gui.util.UIUtils;
 import cn.unminded.sparrow.info.ChangeInfo;
 import cn.unminded.sparrow.util.ConvertFormatEnum;
 import cn.unminded.sparrow.util.OutputModeEnum;
+import cn.unminded.sparrow.util.PDFBoxUtils;
 import cn.unminded.sparrow.util.PageSizeEnum;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.extras.components.FlatButton;
-import org.apache.pdfbox.pdmodel.PDDocument;
 
 import javax.swing.*;
 import java.awt.*;
@@ -185,7 +185,7 @@ public class MainJFrame extends JFrame {
         targetFolder.setText("");
         targetFolder.setToolTipText("");
 
-        setPageSetJPanel();
+        setPageSetVisible();
     }
 
     private void pdfToWordAction(ActionEvent e) {
@@ -198,7 +198,7 @@ public class MainJFrame extends JFrame {
         targetButton.setToolTipText("输出目录默认与源文件一致");
         targetFolder.setText("");
 
-        setPageSetJPanel();
+        setPageSetVisible();
     }
 
     private void pdfSplitAction(ActionEvent e) {
@@ -207,7 +207,7 @@ public class MainJFrame extends JFrame {
         sourceButton.setToolTipText("点击选择目标PDF文件");
         targetButton.setEnabled(false);
 
-        setPageSetJPanel();
+        setPageSetVisible();
     }
 
     private void pdfMergeAction(ActionEvent e) {
@@ -216,7 +216,7 @@ public class MainJFrame extends JFrame {
         sourceButton.setToolTipText("点击选择目标PDF文件");
         targetButton.setEnabled(false);
 
-        setPageSetJPanel();
+        setPageSetVisible();
     }
 
     private void aboutAction() {
@@ -274,7 +274,9 @@ public class MainJFrame extends JFrame {
         pageSet = JComponentUtils.getJPanel(new FlowLayout(FlowLayout.LEFT));
         choose.add("chooseFile", jPanel);
         choose.add("pageSet", pageSet);
-        this.outPageControl(pageSet);
+        this.setPageSetControl();
+        this.setPageSetVisible();
+
 
         jPanel.add("sourceButton", sourceButton);
         jPanel.add("sourceFolder", sourceFolder);
@@ -316,7 +318,7 @@ public class MainJFrame extends JFrame {
         });
     }
 
-    private void outPageControl(JPanel pageSet) {
+    private void setPageSetControl() {
         pageSet.add(JComponentUtils.getJLabel("<html>&nbsp;&nbsp;&nbsp;开始页: </html>"));
         JTextField startPageTextField = new JTextField();
         pageSet.add(startPageTextField);
@@ -328,8 +330,6 @@ public class MainJFrame extends JFrame {
         pageSet.add(JComponentUtils.getJLabel("<html>&nbsp;&nbsp;结束页: </html>"));
         JTextField endPageTextField = new JTextField();
         pageSet.add(endPageTextField);
-
-        pageSet.setEnabled(false);
     }
 
     private void setSourceButton(File file, File[] selectedFiles) {
@@ -485,15 +485,13 @@ public class MainJFrame extends JFrame {
             throw new SparrowConverterException("页面分割大小不能大于结束页和结束页之间的页面数量");
         }
 
-        try {
-            PDDocument load = PDDocument.load(new File(sourceFolder.getText()));
-            int count = load.getPages().getCount();
-            if (changeInfo.getStartPage() > count || changeInfo.getSplitLength() > count || changeInfo.getEndPage() > count) {
-                throw new SparrowConverterException("开始页: " + startPage.getText() + "分割大小: " + pageSize.getText() + "结束页: " + endPage.getText() + "，三者均不能大于文档的总页数:" + count);
-            }
-        } catch (IOException e) {
-            LogUtil.getLogger().error("{}读取失败", sourceFolder.getText(), e);
+        int count = PDFBoxUtils.getPageCount(sourceFolder.getText());
+        if (count == 0) {
+            LogUtil.getLogger().error("{}读取失败", sourceFolder.getText());
             throw new SparrowConverterException(sourceFolder.getText() + "读取失败");
+        }
+        if (changeInfo.getStartPage() > count || changeInfo.getSplitLength() > count || changeInfo.getEndPage() > count) {
+            throw new SparrowConverterException("开始页: " + startPage.getText() + "分割大小: " + pageSize.getText() + "结束页: " + endPage.getText() + "，三者均不能大于文档的总页数:" + count);
         }
 
         return changeInfo;
@@ -502,7 +500,7 @@ public class MainJFrame extends JFrame {
     /**
      * 统一处理页面的功能按钮
      */
-    private void setPageSetJPanel() {
+    private void setPageSetVisible() {
         pageSet.setVisible(Objects.equals(currentMode, MenuNameEnum.PDF_SPLIT.getName()));
     }
 

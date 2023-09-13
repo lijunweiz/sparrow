@@ -1,13 +1,22 @@
 package cn.unminded.sparrow.util;
 
+import org.apache.pdfbox.io.IOUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.util.Matrix;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Calendar;
+import java.util.Objects;
 
 public class PDFBoxUtils {
+
+    private static final Logger logger = LoggerFactory.getLogger(PDFBoxUtils.class);
 
     public static final float PD_DOCUMENT_VERSION = 1.4f;
 
@@ -46,6 +55,19 @@ public class PDFBoxUtils {
         Matrix matrix = Matrix.getTranslateInstance(A4_X, pdPage.getMediaBox().getHeight() - image.getHeight() - A4_Y);
         matrix.scale(image.getWidth(), image.getHeight());
         return matrix;
+    }
+
+    public static Integer getPageCount(String filePath) {
+        PDDocument pdDocument = null;
+        try {
+            pdDocument = PDDocument.load(new File(filePath));
+        } catch (IOException e) {
+            logger.error("文件{}读取失败：{}", filePath, e.getMessage());
+        } finally {
+            IOUtils.closeQuietly(pdDocument);
+        }
+
+        return Objects.isNull(pdDocument) ? 0 : pdDocument.getPages().getCount();
     }
 
 }
