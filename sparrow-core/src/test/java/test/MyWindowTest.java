@@ -1,8 +1,12 @@
 package test;
 
+import org.apache.pdfbox.pdmodel.PDDocument;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.io.File;
+import java.io.IOException;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -47,7 +51,12 @@ public class MyWindowTest {
         frame.setVisible(true);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 //        test.MyWindowTest windowt = new test.MyWindowTest();
+
+        String path = "D:\\资料\\BaiduNetdiskDownload\\test.pdf";
+        PDDocument pdDocument = PDDocument.load(new File(path));
+        pdDocument.setAllSecurityToBeRemoved(true);
+        pdDocument.save(path + "dd");
     }
 }

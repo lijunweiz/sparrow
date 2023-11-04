@@ -2,7 +2,7 @@
 <configuration scan="false" scanPeriod="600 seconds" debug="false">
 	<contextName>sparrow</contextName>
 	<property name="APP_NAME" value="sparrow"/>
-	<property name="LOG_HOME" value="./logs/${APP_NAME}"/>
+	<property name="LOG_HOME" value="./logs"/>
 
 	<!-- 控制台输出 -->
 	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
