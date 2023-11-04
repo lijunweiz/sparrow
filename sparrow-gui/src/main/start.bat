@@ -12,5 +12,5 @@ if "%OS%" == "Windows_NT" (
 set "JAVA_HOME=%DIRNAME%\jre"
 set "JAVA=%JAVA_HOME%\bin\java"
 set "JAVA_OPTS=--illegal-access=deny --add-opens java.base/java.lang=ALL-UNNAMED -Xms128m -Xmx256m"
-set "RUN_JAR=%DIRNAME%\bin\sparrow.jar"
+set "RUN_JAR=%DIRNAME%\sparrow.jar"
 start /b %JAVA% %JAVA_OPTS% -jar %RUN_JAR%

@@ -14,7 +14,8 @@
         <fileSet>
             <directory>src/main</directory>
             <includes>
-                <include>sparrow.bat</include>
+                <include>*.bat</include>
+                <include>*.sh</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
@@ -32,7 +33,7 @@
             <includes>
                 <include>sparrow.jar</include>
             </includes>
-            <outputDirectory>bin</outputDirectory>
+            <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
     </fileSets>
     <dependencySets>
@@ -41,6 +42,7 @@
             <outputDirectory>lib</outputDirectory>
             <scope>runtime</scope>
             <excludes>
+                <!-- 排除指定的jar -->
                 <exclude>cn.unminded:sparrow-gui</exclude>
             </excludes>
         </dependencySet>
